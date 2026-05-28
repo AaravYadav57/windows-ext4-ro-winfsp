@@ -2,10 +2,10 @@
  * diskio.c - Disk / image I/O abstraction
  *
  * Handles:
- *   \\.\PhysicalDriveN  – whole physical disk (may need partition number)
- *   \\.\X:              – volume/partition letter
- *   \\.\HarddiskVolumeN – volume by number
- *   path\to\file.img    – raw image, flat or with MBR/GPT
+ *   \\.\PhysicalDriveN   whole physical disk (may need partition number)
+ *   \\.\X:               volume/partition letter
+ *   \\.\HarddiskVolumeN  volume by number
+ *   path\to\file.img     raw image, flat or with MBR added GPT but idk if it works
  */
 
 #include <windows.h>
@@ -13,11 +13,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <malloc.h>   /* _aligned_malloc / _aligned_free */
+#include <malloc.h>
 #include "diskio.h"
 #include "ext4.h"
 
-/* ── Helpers ────────────────────────────────────────────────────────────── */
+/*  Helpers */
 
 static BOOL raw_read(HANDLE h, uint64_t byte_offset, void *buf, uint32_t size)
 {
@@ -30,7 +30,7 @@ static BOOL raw_read(HANDLE h, uint64_t byte_offset, void *buf, uint32_t size)
     return read == size;
 }
 
-/* ── Partition table parsing ────────────────────────────────────────────── */
+/*  Partition table parsing */
 
 static BOOL parse_mbr(HANDLE h, int part_idx, uint64_t *offset, uint64_t *size)
 {
@@ -39,10 +39,6 @@ static BOOL parse_mbr(HANDLE h, int part_idx, uint64_t *offset, uint64_t *size)
         return FALSE;
     if (mbr.signature != 0xAA55)
         return FALSE;
-
-    /* Extended / logical partition support (simple linear scan) */
-    /* For simplicity we enumerate primaries only here;           */
-    /* logical partitions are handled via diskio_list_partitions. */
     if (part_idx < 1 || part_idx > 4)
         return FALSE;
 
@@ -92,7 +88,7 @@ static BOOL parse_gpt(HANDLE h, int part_idx, uint64_t *offset, uint64_t *size)
     return FALSE;
 }
 
-/* ── diskio_list_partitions ─────────────────────────────────────────────── */
+/*  diskio_list_partitions */
 
 void diskio_list_partitions(const char *path)
 {
@@ -161,7 +157,7 @@ void diskio_list_partitions(const char *path)
     CloseHandle(h);
 }
 
-/* ── diskio_open ────────────────────────────────────────────────────────── */
+/*  diskio_open */
 
 BOOL diskio_open(const char *path, int partition, disk_handle_t *out)
 {
@@ -239,7 +235,7 @@ BOOL diskio_open(const char *path, int partition, disk_handle_t *out)
     return TRUE;
 }
 
-/* ── diskio_read ────────────────────────────────────────────────────────── */
+/*  diskio_read  */
 
 BOOL diskio_read(disk_handle_t *dh, uint64_t offset, void *buf, uint32_t size)
 {
@@ -267,7 +263,7 @@ BOOL diskio_read(disk_handle_t *dh, uint64_t offset, void *buf, uint32_t size)
     return raw_read(dh->hFile, abs_offset, buf, size);
 }
 
-/* ── diskio_probe_ext4 ──────────────────────────────────────────────────── */
+/*  diskio_probe_ext4  */
 
 BOOL diskio_probe_ext4(disk_handle_t *dh)
 {
@@ -278,7 +274,7 @@ BOOL diskio_probe_ext4(disk_handle_t *dh)
     return magic == EXT4_SUPER_MAGIC;
 }
 
-/* ── diskio_close ───────────────────────────────────────────────────────── */
+/*  diskio_close  */
 
 void diskio_close(disk_handle_t *dh)
 {
